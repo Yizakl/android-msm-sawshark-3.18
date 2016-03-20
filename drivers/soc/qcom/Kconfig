@@ -760,6 +760,9 @@ config MSM_KERNEL_PROTECT
           aarch64_insn_patch_text_nosync, etc. including the various CPU
           errata workarounds in arch/arm64/kernel/cpu_errata.c).
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
 config MSM_KERNEL_PROTECT_TEST
 	bool "Bootup test of kernel protection (INTENTIONAL CRASH)"
         depends on MSM_KERNEL_PROTECT
