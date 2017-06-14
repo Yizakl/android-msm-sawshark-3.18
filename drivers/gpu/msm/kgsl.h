@@ -27,7 +27,6 @@
 #include <linux/dma-attrs.h>
 #include <linux/uaccess.h>
 #include <linux/kthread.h>
-#include <asm/cacheflush.h>
 
 /* The number of memstore arrays limits the number of contexts allowed.
  * If more contexts are needed, update multiple for MEMSTORE_SIZE
@@ -220,7 +219,7 @@ struct kgsl_mem_entry {
 	struct kgsl_process_private *priv;
 	int pending_free;
 	char metadata[KGSL_GPUOBJ_ALLOC_METADATA_MAX + 1];
-	struct work_struct work;
+	struct kthread_work work;
 };
 
 struct kgsl_device_private;

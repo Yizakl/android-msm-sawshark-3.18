@@ -47,6 +47,7 @@ Module.symvers
 /System.map
 /Module.markers
 /out
+/AIK-Linux
 
 #
 # Debian directory (make deb-pkg)
@@ -97,3 +98,5 @@ x509.genkey
 
 # Kconfig presets
 all.config
+
+build2.sh
