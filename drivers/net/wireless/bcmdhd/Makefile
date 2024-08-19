@@ -169,7 +169,7 @@ endif
 # Print DHCP packets
 #  DHDCFLAGS += -DDHD_DHCP_DUMP
 
-#EXTRA_LDFLAGS += --strip-debug
+EXTRA_LDFLAGS += --strip-debug
 
 #ifeq ($(DRIVER_TYPE),y)
   DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
@@ -215,3 +215,5 @@ clean:
 install:
 	@$(MAKE) --no-print-directory -C $(KDIR) \
 		SUBDIRS=$(CURDIR) modules_install
+
+subdir-ccflags-y := -Os
