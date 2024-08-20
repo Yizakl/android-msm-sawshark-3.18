@@ -616,6 +616,11 @@ include $(srctree)/arch/$(SRCARCH)/Makefile
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
 
+
+KBUILD_CFLAGS   += $(call cc-option, -mtune=cortex-a7,) \
+                   $(call cc-option, -g0,) \
+                   $(call cc-option, -DNDEBUG,)
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
 else
