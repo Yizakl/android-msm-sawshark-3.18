@@ -4,7 +4,7 @@
 ## AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=Armonia kernel by linckandrea @ xda-developers
+kernel.string= kernel by linckandrea @ xda-developers
 do.devicecheck=1
 do.modules=0
 do.systemless=1
@@ -46,7 +46,6 @@ remove_line init.sawfish.rc "import init.simple.rc";
 remove_line init.sawfish.rc "import init.simple.exec.rc";
 remove_line init.sawfish.rc "init.simple.rc";
 remove_line init.sawfish.rc "init.simple.exec.rc";
-insert_line init.sawfish.rc "init.simple.exec.rc" after "import init.huawei.logserver.rc" "import init.simple.exec.rc";
 
 # end ramdisk changes
 
