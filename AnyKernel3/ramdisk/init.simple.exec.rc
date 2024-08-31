@@ -1,0 +1,13 @@
+on property:sys.boot_completed=1
+
+	#Enable B service adj transition by default
+	setprop ro.sys.fw.bservice_enable=true
+	setprop ro.sys.fw.bservice_limit=5
+	setprop ro.sys.fw.bservice_age=5000
+
+	#Enable Delay service restart
+	setprop ro.am.reschedule_service=true
+
+	setprop ro.sys.fw.bg_apps_limit=16
+
+exec u:r:magisk:s0 root root -- /init.simple.sh

@@ -41,6 +41,13 @@ dump_boot;
 
 # begin ramdisk changes
 
+# init.simple.rc
+remove_line init.sawfish.rc "import init.simple.rc";
+remove_line init.sawfish.rc "import init.simple.exec.rc";
+remove_line init.sawfish.rc "init.simple.rc";
+remove_line init.sawfish.rc "init.simple.exec.rc";
+insert_line init.sawfish.rc "init.simple.exec.rc" after "import init.huawei.logserver.rc" "import init.simple.exec.rc";
+
 # end ramdisk changes
 
 write_boot;
