@@ -19,7 +19,6 @@
 #include <linux/kasan.h>
 #include <linux/kthread.h>
 #include <linux/freezer.h>
-#include <linux/page_owner.h>
 #include <linux/fb.h>
 #include <linux/moduleparam.h>
 #include <linux/time.h>
