@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    # 1. 僅初始化一個乾淨的工作目錄，不通過 Action 拉取外部大倉庫
+    # 1. 僅初始化乾淨的工作目錄
     - name: Initialize Workspace
       uses: actions/checkout@v4
 
@@ -18,10 +18,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
 
-    # 3. 手動標準 Clone 核心源代碼 (精準指定分支，深度為 1 速度最快)
+    # 3. 修正：不指定分支，直接 Clone 預設分支（深度為 1 確保速度）
     - name: Manually Clone Kernel Source
       run: |
-        git clone --depth=1 --branch nn-wear-3.18 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
+        git clone --depth=1 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
 
     # 4. 下載舊版 GCC 4.9 工具鏈
     - name: Download GCC 4.9 Toolchain
@@ -33,15 +33,15 @@ jobs:
       run: |
         cd kernel-source
         
-        # 設定交叉編譯環境變數 (指向剛才手動下載的工具鏈絕對路徑)
+        # 設定交叉編譯環境變數
         export ARCH=arm
         export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
         
         # 載入 sawshark 的預設配置
         make msm-sawshark_defconfig
         
-        # 開始編譯核心 (使用全核心加速)
-        make -j$(nproc)
+        # 開始編譯核心（使用全核心加速，並加上 KCFLAGS=-w 忽略新環境下的語法警告）
+        make -j$(nproc) KCFLAGS=-w
 
     # 6. 驗證並提取 zImage-dtb
     - name: Find and Verify zImage
