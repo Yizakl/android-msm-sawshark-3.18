@@ -23,10 +23,10 @@ jobs:
       run: |
         git clone --depth=1 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
 
-    # 4. 修正：切換到清華大學開源鏡像站下載 AOSP GCC 4.9 工具鏈 (100% 公開且穩定)
+    # 4. 修正：使用 Google 官方最底層的永久公開 AOSP 工具鏈鏡像源 (海外服務器 100% 綠燈通行)
     - name: Download GCC 4.9 Toolchain
       run: |
-        git clone --depth=1 https://mirrors.tuna.tsinghua.edu.tw/git/AOSP/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9.git gnu-toolchain
+        git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gnu-toolchain
 
     # 5. 進入源代碼目錄並編譯
     - name: Configure and Build Kernel
