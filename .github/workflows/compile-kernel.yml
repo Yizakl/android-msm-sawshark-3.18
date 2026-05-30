@@ -18,29 +18,29 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
 
-    # 3. 手動標準 Clone 核心源代碼 (你剛才已經成功通過了這一步)
+    # 3. 手動標準 Clone 核心源代碼
     - name: Manually Clone Kernel Source
       run: |
         git clone --depth=1 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
 
-    # 4. 修正：切換到 GitHub 穩定的 GCC 4.9 交叉編譯工具鏈鏡像
+    # 4. 修正：切換到清華大學開源鏡像站下載 AOSP GCC 4.9 工具鏈 (100% 公開且穩定)
     - name: Download GCC 4.9 Toolchain
       run: |
-        git clone --depth=1 https://github.com/lineageos-mirror/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git gnu-toolchain
+        git clone --depth=1 https://mirrors.tuna.tsinghua.edu.tw/git/AOSP/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9.git gnu-toolchain
 
     # 5. 進入源代碼目錄並編譯
     - name: Configure and Build Kernel
       run: |
         cd kernel-source
         
-        # 設定交叉編譯環境變數 (指向 LineageOS 鏡像結構下的編譯器路徑)
+        # 設定交叉編譯環境變數
         export ARCH=arm
         export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
         
         # 載入 sawshark 的預設配置
         make msm-sawshark_defconfig
         
-        # 開始編譯核心 (使用全核心加速，並加上 KCFLAGS=-w 忽略新環境下的語法警告)
+        # 開始編譯核心（使用全核心加速，並加上 KCFLAGS=-w 忽略新環境下的語法警告）
         make -j$(nproc) KCFLAGS=-w
 
     # 6. 驗證並提取 zImage-dtb
