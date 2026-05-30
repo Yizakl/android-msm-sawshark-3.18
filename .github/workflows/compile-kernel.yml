@@ -8,54 +8,59 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout Kernel Source
+    # 1. 僅初始化一個乾淨的工作目錄，不通過 Action 拉取外部大倉庫
+    - name: Initialize Workspace
       uses: actions/checkout@v4
-      with:
-        repository: 'linckandrea/android-msm-sawshark-3.18'
-        ref: 'nn-wear-3.18' # 修正為該倉庫實際的主分支名稱
-        fetch-depth: 1      # 僅拉取最新一次提交，極大加快大倉庫的下載速度
 
+    # 2. 安裝編譯必備套件
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
 
+    # 3. 手動標準 Clone 核心源代碼 (精準指定分支，深度為 1 速度最快)
+    - name: Manually Clone Kernel Source
+      run: |
+        git clone --depth=1 --branch nn-wear-3.18 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
+
+    # 4. 下載舊版 GCC 4.9 工具鏈
     - name: Download GCC 4.9 Toolchain
       run: |
-        cd ..
         git clone --depth=1 https://android.googlesource.com/toolchain/arm-linux-androideabi-4.9 gnu-toolchain
 
+    # 5. 進入源代碼目錄並編譯
     - name: Configure and Build Kernel
       run: |
-        # 設定交叉編譯環境變數
-        export ARCH=arm
-        export CROSS_COMPILE=$(pwd)/../gnu-toolchain/bin/arm-linux-androideabi-
+        cd kernel-source
         
-        # 1. 載入 sawshark 的預設配置
+        # 設定交叉編譯環境變數 (指向剛才手動下載的工具鏈絕對路徑)
+        export ARCH=arm
+        export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
+        
+        # 載入 sawshark 的預設配置
         make msm-sawshark_defconfig
         
-        # 2. 開始編譯核心 (使用全部 CPU 核心加速)
+        # 開始編譯核心 (使用全核心加速)
         make -j$(nproc)
 
+    # 6. 驗證並提取 zImage-dtb
     - name: Find and Verify zImage
       run: |
         echo "=== 檢查編譯產物 ==="
-        ls -la arch/arm/boot/
+        ls -la kernel-source/arch/arm/boot/
         
-        # 建立輸出目錄
         mkdir -p output
-        
-        # 高通平台通常使用帶有設備樹的 zImage-dtb
-        if [ -f "arch/arm/boot/zImage-dtb" ]; then
-          cp arch/arm/boot/zImage-dtb output/
+        if [ -f "kernel-source/arch/arm/boot/zImage-dtb" ]; then
+          cp kernel-source/arch/arm/boot/zImage-dtb output/
           echo "成功找到 zImage-dtb"
-        elif [ -f "arch/arm/boot/zImage" ]; then
-          cp arch/arm/boot/zImage output/
+        elif [ -f "kernel-source/arch/arm/boot/zImage" ]; then
+          cp kernel-source/arch/arm/boot/zImage output/
           echo "成功找到 zImage"
         else
           echo "錯誤：未找到編譯出的核心檔案！" && exit 1
         fi
 
+    # 7. 上傳產物
     - name: Upload zImage Artifact
       uses: actions/upload-artifact@v4
       with:
