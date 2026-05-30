@@ -55,7 +55,7 @@ jobs:
         fi
 
     - name: Upload zImage Artifact
-      uses: actions/actions-artifact@v4
-      with:
+      uses: actions/upload-artifact@v4
+      with: 
         name: sawshark-zImage
         path: output/
