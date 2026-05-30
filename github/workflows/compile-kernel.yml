@@ -1,0 +1,61 @@
+name: Compile Sawshark Kernel
+
+on:
+  workflow_dispatch: # 允許手動點擊按鈕觸發編譯
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+      with:
+        repository: 'linckandrea/android-msm-sawshark-3.18'
+        ref: 'master' # 如果主分支叫 main，請改為 main
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
+
+    - name: Download GCC 4.9 Toolchain
+      run: |
+        cd ..
+        git clone --depth=1 https://android.googlesource.com/toolchain/arm-linux-androideabi-4.9 gnu-toolchain
+
+    - name: Configure and Build Kernel
+      run: |
+        # 設定交叉編譯環境變數
+        export ARCH=arm
+        export CROSS_COMPILE=$(pwd)/../gnu-toolchain/bin/arm-linux-androideabi-
+        
+        # 1. 載入 sawshark 的預設配置
+        # 注意：如果編譯報錯找不到此檔案，請檢查源代碼 arch/arm/configs/ 底下的實際檔名
+        make msm-sawshark_defconfig
+        
+        # 2. 開始編譯核心 (使用全部 CPU 核心加速)
+        make -j$(nproc)
+
+    - name: Find and Verify zImage
+      run: |
+        echo "=== 檢查編譯產物 ==="
+        ls -la arch/arm/boot/
+        
+        # 複製出目標檔案方便打包，高通平台通常使用帶有設備樹的 zImage-dtb
+        mkdir -p output
+        if [ -f "arch/arm/boot/zImage-dtb" ]; then
+          cp arch/arm/boot/zImage-dtb output/
+          echo "成功找到 zImage-dtb"
+        elif [ -f "arch/arm/boot/zImage" ]; then
+          cp arch/arm/boot/zImage output/
+          echo "成功找到 zImage"
+        else
+          echo "錯誤：未找到編譯出的核心檔案！" && exit 1
+        fi
+
+    - name: Upload zImage Artifact
+      uses: actions/actions-artifact@v4
+      with:
+        name: sawshark-zImage
+        path: output/
