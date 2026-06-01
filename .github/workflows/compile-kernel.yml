@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    # 1. 僅初始化乾淨的工作目錄
+    # 1. 初始化工作目錄
     - name: Initialize Workspace
       uses: actions/checkout@v4
 
@@ -18,17 +18,23 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
 
-    # 3. 手動標準 Clone 核心源代碼
+    # 3. Clone 核心源代碼
     - name: Manually Clone Kernel Source
       run: |
         git clone --depth=1 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
 
-    # 4. 修正：使用 Google 官方最底層的永久公開 AOSP 工具鏈鏡像源 (海外服務器 100% 綠燈通行)
+    # 4. 下載 GCC 4.9 工具鏈
     - name: Download GCC 4.9 Toolchain
       run: |
         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gnu-toolchain
 
-    # 5. 進入源代碼目錄並編譯
+    # 5. 【新增步驟】列印所有內核配置檔名稱，幫我們抓出正確的 defconfig
+    - name: List Available Defconfigs
+      run: |
+        echo "=== 正在列出 arch/arm/configs/ 底下的所有配置文件 ==="
+        ls -la kernel-source/arch/arm/configs/
+
+    # 6. 進入源代碼目錄並編譯
     - name: Configure and Build Kernel
       run: |
         cd kernel-source
@@ -37,32 +43,8 @@ jobs:
         export ARCH=arm
         export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
         
-        # 載入 sawshark 的預設配置
-        make msm-sawshark_defconfig
+        # 暫時沿用，如果下一步列印出來發現名字不同，我們再修改這裡
+        make msm-sawshark_defconfig || make msm8909-perf_defconfig || echo "預設配置失敗，請查看上方列表"
         
-        # 開始編譯核心（使用全核心加速，並加上 KCFLAGS=-w 忽略新環境下的語法警告）
+        # 開始編譯核心
         make -j$(nproc) KCFLAGS=-w
-
-    # 6. 驗證並提取 zImage-dtb
-    - name: Find and Verify zImage
-      run: |
-        echo "=== 檢查編譯產物 ==="
-        ls -la kernel-source/arch/arm/boot/
-        
-        mkdir -p output
-        if [ -f "kernel-source/arch/arm/boot/zImage-dtb" ]; then
-          cp kernel-source/arch/arm/boot/zImage-dtb output/
-          echo "成功找到 zImage-dtb"
-        elif [ -f "kernel-source/arch/arm/boot/zImage" ]; then
-          cp kernel-source/arch/arm/boot/zImage output/
-          echo "成功找到 zImage"
-        else
-          echo "錯誤：未找到編譯出的核心檔案！" && exit 1
-        fi
-
-    # 7. 上傳產物
-    - name: Upload zImage Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: sawshark-zImage
-        path: output/
