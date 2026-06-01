@@ -11,10 +11,12 @@ jobs:
     - name: Initialize Workspace
       uses: actions/checkout@v4
 
+    # 修正：開啟 32 位元架構支援並安裝相容庫，解決 arm-linux-androideabi-gcc "not found" 錯誤
     - name: Install Build Dependencies
       run: |
+        sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1
+        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1 lib32stdc++6 libc6:i386 libstdc++6:i386
 
     - name: Manually Clone Kernel Source
       run: |
@@ -30,7 +32,7 @@ jobs:
         export ARCH=arm
         export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
         
-        # 修正：精準使用倉庫裡存在的 sawshark 完整配置檔
+        # 載入配置
         make sawshark_full_defconfig
         
         # 開始編譯核心 (全核心加速，關閉語法警告)
