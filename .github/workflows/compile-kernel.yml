@@ -11,25 +11,27 @@ jobs:
     - name: Initialize Workspace
       uses: actions/checkout@v4
 
-    # 關鍵修正點：開啟 32 位元架構相容庫，解決 arm-linux-androideabi-gcc "not found" 錯誤
     - name: Install Build Dependencies
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1 lib32stdc++6 libc6:i386 libstdc++6:i386
+        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1 lib32stdc++6 libc6:i386 libstdc++6:i386 libncurses5:i386 libtinfo5:i386
 
-    - name: Manually Clone Kernel Source
+    - name: Clone Kernel Source
       run: |
         git clone --depth=1 https://github.com/linckandrea/android-msm-sawshark-3.18.git kernel-source
 
-    - name: Download GCC 4.9 Toolchain
+    - name: Download GCC 4.9 Toolchain (LineageOS Fork)
       run: |
-        git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gnu-toolchain
+        # 關鍵修復：改用 LineageOS 備份的分支，這裡面才有真正的編譯器檔案！
+        git clone --depth=1 -b lineage-18.1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git gnu-toolchain
 
-    # 驗證步驟：測試編譯器是否能被系統正常執行，避免後面編譯浪費時間
     - name: Verify Toolchain Execution
       run: |
-        echo "=== 測試編譯器是否可用 ==="
+        echo "=== 檢查編譯器目錄是否不再是空殼 ==="
+        ls -la ${{ github.workspace }}/gnu-toolchain/bin/
+        
+        echo "=== 測試編譯器執行 ==="
         ${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-gcc -v
 
     - name: Configure and Build Kernel
@@ -47,7 +49,7 @@ jobs:
     - name: Find and Verify zImage
       run: |
         echo "=== 檢查編譯產物 ==="
-        ls -la kernel-source/arch/arm/boot/
+        ls -la kernel-source/arch/arm/boot/ || true
         
         mkdir -p output
         if [ -f "kernel-source/arch/arm/boot/zImage-dtb" ]; then
