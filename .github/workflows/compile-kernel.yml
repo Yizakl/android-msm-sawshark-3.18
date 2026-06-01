@@ -11,7 +11,7 @@ jobs:
     - name: Initialize Workspace
       uses: actions/checkout@v4
 
-    # 修正：開啟 32 位元架構支援並安裝相容庫，解決 arm-linux-androideabi-gcc "not found" 錯誤
+    # 關鍵修正點：開啟 32 位元架構相容庫，解決 arm-linux-androideabi-gcc "not found" 錯誤
     - name: Install Build Dependencies
       run: |
         sudo dpkg --add-architecture i386
@@ -25,6 +25,12 @@ jobs:
     - name: Download GCC 4.9 Toolchain
       run: |
         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gnu-toolchain
+
+    # 驗證步驟：測試編譯器是否能被系統正常執行，避免後面編譯浪費時間
+    - name: Verify Toolchain Execution
+      run: |
+        echo "=== 測試編譯器是否可用 ==="
+        ${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-gcc -v
 
     - name: Configure and Build Kernel
       run: |
