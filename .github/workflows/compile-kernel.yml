@@ -75,8 +75,15 @@ jobs:
         # 1. 憑空生成一個合規的空外殼 cpio 壓縮包作為 ramdisk 佔位符
         echo -n "" | gzip > empty_ramdisk.cpio.gz
         
-        # 2. 下載 Linux 版本的 mkbootimg 工具鏈核心
-        wget https://raw.githubusercontent.com/osm0sis/mkbootimg/master/mkbootimg.py -O mkbootimg.py
+        # 2. 替代方案：直接從 Google AOSP 官方源抓取絕對穩定的 mkbootimg 腳本
+        wget "https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/master/mkbootimg.py?format=TEXT" -O mkbootimg.base64
+        base64 -d mkbootimg.base64 > mkbootimg.py
+        
+        # 如果 AOSP 抓取有任何意外，我們準備一個萬用的 Python 備用行
+        if [ ! -s mkbootimg.py ]; then
+          echo "【提示】切換到備用打包方案..."
+          wget https://raw.githubusercontent.com/nandzip/android_platform_system_core/master/mkbootimg/mkbootimg -O mkbootimg.py
+        fi
         
         # 3. 使用華為 Watch 2 官方標準的高通 MSM8909 記憶體偏移參數進行精密打包
         python3 mkbootimg.py \
