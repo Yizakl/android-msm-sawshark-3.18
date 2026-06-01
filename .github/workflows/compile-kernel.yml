@@ -1,4 +1,4 @@
-name: Compile Sawshark Kernel
+name: Compile Sawshark Kernel & Auto Pack
 
 on:
   workflow_dispatch: 
@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1 lib32stdc++6 libc6:i386 libstdc++6:i386 libncurses5:i386 libtinfo5:i386
+        sudo apt-get install -y build-essential libncurses5-dev bc libssl-dev flex bison libelf-dev git ccache ncurses-dev lib32z1 lib32stdc++6 libc6:i386 libstdc++6:i386 libncurses5:i386 libtinfo5:i386 abootimg
 
     - name: Clone Kernel Source
       run: |
@@ -23,14 +23,12 @@ jobs:
 
     - name: Download GCC 4.9 Toolchain (LineageOS Fork)
       run: |
-        # 關鍵修復：改用 LineageOS 備份的分支，這裡面才有真正的編譯器檔案！
         git clone --depth=1 -b lineage-18.1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9.git gnu-toolchain
 
     - name: Verify Toolchain Execution
       run: |
-        echo "=== 檢查編譯器目錄是否不再是空殼 ==="
+        echo "=== 檢查編譯器目錄 ==="
         ls -la ${{ github.workspace }}/gnu-toolchain/bin/
-        
         echo "=== 測試編譯器執行 ==="
         ${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-gcc -v
 
@@ -40,30 +38,62 @@ jobs:
         export ARCH=arm
         export CROSS_COMPILE=${{ github.workspace }}/gnu-toolchain/bin/arm-linux-androideabi-
         
-        # 載入配置
+        # 載入華為 Watch 2 專用配置
         make sawshark_full_defconfig
         
-        # 開始編譯核心 (全核心加速，關閉語法警告)
-        make -j$(nproc) KCFLAGS=-w
+        # 強制編譯帶有設備樹的 zImage-dtb 目標
+        make -j$(nproc) zImage-dtb KCFLAGS=-w
 
-    - name: Find and Verify zImage
+    - name: Process and Fix Device Tree (DTB)
       run: |
-        echo "=== 檢查編譯產物 ==="
-        ls -la kernel-source/arch/arm/boot/ || true
+        mkdir -p ${{ github.workspace }}/output
+        cd kernel-source
         
-        mkdir -p output
-        if [ -f "kernel-source/arch/arm/boot/zImage-dtb" ]; then
-          cp kernel-source/arch/arm/boot/zImage-dtb output/
-          echo "成功找到 zImage-dtb"
-        elif [ -f "kernel-source/arch/arm/boot/zImage" ]; then
-          cp kernel-source/arch/arm/boot/zImage output/
-          echo "成功找到 zImage"
+        echo "=== 檢查原始編譯輸出 ==="
+        ls -la arch/arm/boot/ || true
+        
+        # 雙重保障：如果沒直接生成 zImage-dtb，則手動將 sawfish 的 dtb 追加到 zImage 後端
+        if [ -f "arch/arm/boot/zImage-dtb" ]; then
+          cp arch/arm/boot/zImage-dtb ${{ github.workspace }}/output/zImage-dtb
+          echo "【狀態】成功獲取原生 zImage-dtb"
+        elif [ -f "arch/arm/boot/zImage" ]; then
+          echo "【警告】未找到原生 zImage-dtb，啟動手動硬體設備樹縫合..."
+          if [ -f "arch/arm/boot/dts/qcom/msm8909-sawfish.dtb" ]; then
+            cat arch/arm/boot/zImage arch/arm/boot/dts/qcom/msm8909-sawfish.dtb > ${{ github.workspace }}/output/zImage-dtb
+            echo "【狀態】手動縫合 msm8909-sawfish.dtb 成功！"
+          else
+            echo "【錯誤】找不到 sawfish.dtb 設備樹檔案，編譯失敗！" && exit 1
+          fi
         else
-          echo "錯誤：未找到編譯出的核心檔案！" && exit 1
+          echo "【錯誤】未找到任何編譯出的核心核心！" && exit 1
         fi
 
-    - name: Upload zImage Artifact
+    - name: 🚀 雲端自動封裝高通引導鏡像 (Android Boot Image)
+      run: |
+        cd ${{ github.workspace }}/output
+        
+        # 1. 憑空生成一個合規的空外殼 cpio 壓縮包作為 ramdisk 佔位符
+        echo -n "" | gzip > empty_ramdisk.cpio.gz
+        
+        # 2. 下載 Linux 版本的 mkbootimg 工具鏈核心
+        wget https://raw.githubusercontent.com/osm0sis/mkbootimg/master/mkbootimg.py -O mkbootimg.py
+        
+        # 3. 使用華為 Watch 2 官方標準的高通 MSM8909 記憶體偏移參數進行精密打包
+        python3 mkbootimg.py \
+          --kernel zImage-dtb \
+          --ramdisk empty_ramdisk.cpio.gz \
+          --base 0x80000000 \
+          --pagesize 2048 \
+          --ramdisk_offset 0x01000000 \
+          --tags_offset 0x00000100 \
+          --cmdline "androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x3F ehci-hcd.park=3" \
+          --output asteroid-final-boot.img
+          
+        echo "=== 檢查最終打包產物 ==="
+        ls -lh asteroid-final-boot.img
+
+    - name: Upload Final Boot Image Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: sawshark-zImage
-        path: output/
+        name: sawshark-final-boot-image
+        path: output/asteroid-final-boot.img
