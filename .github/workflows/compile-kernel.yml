@@ -68,7 +68,7 @@ jobs:
           echo "【錯誤】未找到任何編譯出的核心核心！" && exit 1
         fi
 
-    - name: 🚀 雲端自動封裝高通引導鏡像 (使用系統內建 abootimg)
+    - name: 🚀 雲端自動封裝高通引導鏡像 (使用系統內建 abootimg 修正版)
       run: |
         cd ${{ github.workspace }}/output
         
@@ -85,12 +85,12 @@ jobs:
         cmdline = androidboot.hardware=qcom user_debug=31 msm_rtb.filter=0x3F ehci-hcd.park=3
         EOF
         
-        # 3. 使用 Ubuntu 系統自帶的 abootimg 二進位工具進行精密打包，徹底避開網路下載
-        abootimg -c -f bootcfg.ini -k zImage-dtb -r empty_ramdisk.cpio.gz asteroid-final-boot.img
+        # 3. 修正語法：使用 --create 建立全新鏡像，並用 -f 載入配置
+        abootimg --create asteroid-final-boot.img -f bootcfg.ini -k zImage-dtb -r empty_ramdisk.cpio.gz
           
         echo "=== 檢查最終打包產物 ==="
         ls -lh asteroid-final-boot.img
-
+        
     - name: Upload Final Boot Image Artifact
       uses: actions/upload-artifact@v4
       with:
